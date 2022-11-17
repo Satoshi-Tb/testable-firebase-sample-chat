@@ -24,7 +24,6 @@ export const usersTest = () => {
   let env: RulesTestEnvironment;
 
   beforeEach(async () => {
-    console.log("beforeEach:top");
     env = getTestEnv();
     await env.withSecurityRulesDisabled(async (context) => {
       const adminDb = context.firestore();
@@ -60,13 +59,11 @@ export const usersTest = () => {
       });
 
       it("読み込みできる(get)", async () => {
-        console.log("1");
         const ref = db.collection(collectionName).doc(user.id);
         await assertSucceeds(ref.get());
       });
 
       it("作成できる", async () => {
-        console.log("2");
         const newUser = userFactory.build();
         const db = env.authenticatedContext(newUser.id).firestore();
         const ref = db.collection(collectionName);
@@ -86,9 +83,32 @@ export const usersTest = () => {
       // });
 
       it("削除できる", async () => {
-        console.log("4");
         const ref = db.collection(collectionName).doc(user.id);
         await assertSucceeds(ref.delete());
+      });
+    });
+
+    describe("自分以外のデータの場合", () => {
+      let db: firebase.firestore.Firestore;
+
+      beforeEach(() => {
+        db = env.authenticatedContext(user.id).firestore();
+      });
+
+      //GETに失敗する
+      // it("読み込みできる(get)", async () => {
+      //   const ref = db.collection(collectionName).doc(other.id);
+      //   await assertSucceeds(ref.get());
+      // });
+
+      it("作成できない", async () => {
+        const ref = db.collection(collectionName).doc(other.id);
+        await assertFails(ref.update({ name: "違う名前" }));
+      });
+
+      it("削除できない", async () => {
+        const ref = db.collection(collectionName).doc(other.id);
+        await assertFails(ref.delete());
       });
     });
   });
