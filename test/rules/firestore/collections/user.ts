@@ -10,36 +10,42 @@ import { WithId } from "@/lib/firebase";
 import { User } from "@/types/user";
 import * as ftest from "@firebase/rules-unit-testing";
 import { serverTimestamp } from "firebase/firestore";
-import compat from "firebase/compat";
-import admin from "firebase-admin";
+// import compat from "firebase/compat";
+// import admin from "firebase-admin";
+import { omit } from "lodash-es";
 
 const user = userFactory.build({ id: "user-id" });
 const other = userFactory.build({ id: "other-id" });
 const users = [user, other];
 
+const collectionName = "users";
+
 export const usersTest = () => {
   let env: RulesTestEnvironment;
 
   beforeEach(async () => {
+    console.log("beforeEach:top");
     env = getTestEnv();
     await env.withSecurityRulesDisabled(async (context) => {
       const adminDb = context.firestore();
-      // 各テストの実施前にテストユーザーを生成する
-      //await setCollections(adminDb.collection("users"), users);
-      //TODO エミュレーター？にTimestampオブジェクトが登録できない。4通り試したがすべてNG
-      //firebase-adminのadmin.firestore.Timestamp.now()
-      //firebase/compatのcompat.firestore.FieldValue.serverTimestamp()
-      //firebase/firestoreのserverTimestamp, Timestamp
-      const addObj = {
-        ...user,
-        createdAt: null,
-        //createdAt: compat.firestore.FieldValue.serverTimestamp(),
-        //createdAt: serverTimestamp(),
-        //createdAt: admin.firestore.Timestamp.now(),
-      };
-      console.log(addObj);
-      users.forEach((user) => {
-        adminDb.collection("users").doc(user.id).set(addObj);
+
+      users.forEach((item) => {
+        // 各テストの実施前にテストユーザーを生成する
+        //await setCollections(adminDb.collection("users"), users);
+        //TODO エミュレーター？にTimestampオブジェクトが登録できない。4通り試したがすべてNG
+        //firebase-adminのadmin.firestore.Timestamp.now()
+        //firebase/compatのcompat.firestore.FieldValue.serverTimestamp()
+        //firebase/firestoreのserverTimestamp, Timestamp
+        const addObj = {
+          ...item,
+          createdAt: null,
+          //createdAt: compat.firestore.FieldValue.serverTimestamp(),
+          //createdAt: serverTimestamp(),
+          //createdAt: admin.firestore.Timestamp.now(),
+        };
+        // console.log("add item:");
+        // console.log(addObj);
+        adminDb.collection(collectionName).doc(item.id).set(addObj);
       });
     });
   });
@@ -54,8 +60,35 @@ export const usersTest = () => {
       });
 
       it("読み込みできる(get)", async () => {
-        const ref = db.collection("users").doc(user.id);
+        console.log("1");
+        const ref = db.collection(collectionName).doc(user.id);
         await assertSucceeds(ref.get());
+      });
+
+      it("作成できる", async () => {
+        console.log("2");
+        const newUser = userFactory.build();
+        const db = env.authenticatedContext(newUser.id).firestore();
+        const ref = db.collection(collectionName);
+        await assertSucceeds(
+          ref.doc(newUser.id).set(omit(newUser, ["createdAt"]))
+        );
+      });
+
+      //UPDATEに失敗する
+      // it("更新できる", async () => {
+      //   console.log("3");
+      //   console.log(user.id);
+      //   const ref = db.collection(collectionName).doc(user.id);
+      //   const item = await ref.get();
+      //   console.log(item.data());
+      //   await assertSucceeds(ref.update({ name: "違う名前" }));
+      // });
+
+      it("削除できる", async () => {
+        console.log("4");
+        const ref = db.collection(collectionName).doc(user.id);
+        await assertSucceeds(ref.delete());
       });
     });
   });
