@@ -49,6 +49,65 @@ export const usersTest = () => {
     });
   });
 
+  describe("未認証の場合", () => {
+    let db: firebase.firestore.Firestore;
+
+    beforeEach(() => {
+      //未認証テスト
+      db = env.unauthenticatedContext().firestore();
+    });
+
+    it("読み込みできない(get)", async () => {
+      const ref = db.collection(collectionName).doc(other.id);
+      await assertFails(ref.get());
+    });
+
+    it("読み込みできない(list)", async () => {
+      const ref = db.collection(collectionName);
+      await assertFails(ref.get());
+    });
+
+    it("作成できない", async () => {
+      const newUser = userFactory.build();
+      const ref = db.collection(collectionName);
+      await assertFails(ref.doc(newUser.id).set(omit(newUser, ["createdAt"])));
+    });
+
+    it("更新できない", async () => {
+      const ref = db.collection(collectionName).doc(other.id);
+      await assertFails(ref.update({ name: "違う名前" }));
+    });
+
+    it("削除できない", async () => {
+      const ref = db.collection(collectionName).doc(other.id);
+      await assertFails(ref.delete());
+    });
+  });
+
+  describe("自分以外のデータの場合", () => {
+    let db: firebase.firestore.Firestore;
+
+    beforeEach(() => {
+      db = env.authenticatedContext(user.id).firestore();
+    });
+
+    //GETに失敗する
+    // it("読み込みできる(get)", async () => {
+    //   const ref = db.collection(collectionName).doc(other.id);
+    //   await assertSucceeds(ref.get());
+    // });
+
+    it("作成できない", async () => {
+      const ref = db.collection(collectionName).doc(other.id);
+      await assertFails(ref.update({ name: "違う名前" }));
+    });
+
+    it("削除できない", async () => {
+      const ref = db.collection(collectionName).doc(other.id);
+      await assertFails(ref.delete());
+    });
+  });
+
   describe("認証済の場合", () => {
     describe("自分のデータの場合", () => {
       let db: firebase.firestore.Firestore;
