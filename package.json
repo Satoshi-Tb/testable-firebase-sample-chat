@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "deploy": "yarn build && firebase deploy --except functions",
     "test": "vitest run",
-    "emulators:start:firestore": "firebase emulators:start --only firestore"
+    "emulators:start": "firebase emulators:start --only firestore"
   },
   "dependencies": {
     "firebase": "^9.14.0",
